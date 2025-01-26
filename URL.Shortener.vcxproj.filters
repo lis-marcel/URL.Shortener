@@ -19,4 +19,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="URL.Shortener.Service">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="URL.Shortening.Service">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

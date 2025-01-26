@@ -1,0 +1,35 @@
+#include "URL.Shorterner.Service.h"
+#include <sstream>
+#include <random>
+
+URLShortener::URLShortener() : baseURL("http://127.0.0.1:18080/") {}
+
+std::string URLShortener::shortenURL(const std::string& longURL) {
+    if (reverseUrlMap.find(longURL) != reverseUrlMap.end()) {
+        return reverseUrlMap[longURL];
+    }
+    std::string shortURL = generateShortURL();
+    urlMap[shortURL] = longURL;
+    reverseUrlMap[longURL] = shortURL;
+    return shortURL;
+}
+
+std::string URLShortener::getOriginalURL(const std::string& shortURL) {
+    if (urlMap.find(shortURL) != urlMap.end()) {
+        return urlMap[shortURL];
+    }
+    return "";
+}
+
+std::string URLShortener::generateShortURL() {
+    std::string shortURL;
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<> distribution(0, Chars.size() - 1);
+
+    for (int i = 0; i < 7; ++i) {
+        shortURL += Chars[distribution(generator)];
+    }
+
+    return baseURL + shortURL;
+}
