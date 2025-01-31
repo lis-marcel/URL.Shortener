@@ -131,11 +131,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="URL.Shortener.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="URLShortener.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="URL.Shortener.Service" />
-    <None Include="URL.Shortening.Service" />
+    <ClInclude Include="URLShortener.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

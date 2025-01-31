@@ -1,0 +1,23 @@
+// URLShortener.h
+#ifndef URLSHORTENER_H
+#define URLSHORTENER_H
+
+#include <string>
+#include <unordered_map>
+
+class URLShortener {
+public:
+    URLShortener();
+    std::string shortenURL(const std::string& longURL);
+    std::string getOriginalURL(const std::string& shortURL);
+
+private:
+    static const std::string Chars;
+    std::string baseURL;
+    std::unordered_map<std::string, std::string> urlMap;
+    std::unordered_map<std::string, std::string> reverseUrlMap;
+
+    std::string generateShortURL();
+};
+
+#endif // URLSHORTENER_H
