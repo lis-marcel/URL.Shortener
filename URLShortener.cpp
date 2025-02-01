@@ -12,13 +12,23 @@ std::string URLShortener::shortenURL(const std::string& longURL) {
     static std::mutex mapMutex;
     std::lock_guard<std::mutex> lock(mapMutex);
 
+    // Check if the long URL has already been shortened
     if (reverseUrlMap.find(longURL) != reverseUrlMap.end()) {
-        return reverseUrlMap[longURL];
+        return baseURL + reverseUrlMap[longURL];
     }
-    std::string shortURL = generateShortURL();
-    urlMap[shortURL] = longURL;
-    reverseUrlMap[longURL] = shortURL;
-    return shortURL;
+
+    // Generate a unique short code
+    std::string shortCode;
+    do {
+        shortCode = generateShortCode();
+    } while (urlMap.find(shortCode) != urlMap.end());
+
+    // Store the mapping
+    urlMap[shortCode] = longURL;
+    reverseUrlMap[longURL] = shortCode;
+
+    // Return the full short URL
+    return baseURL + shortCode;
 }
 
 std::string URLShortener::getOriginalURL(const std::string& shortURL) {
@@ -32,7 +42,7 @@ std::string URLShortener::getOriginalURL(const std::string& shortURL) {
     return "";
 }
 
-std::string URLShortener::generateShortURL() {
+std::string URLShortener::generateShortCode() {
     std::string shortURL;
     static std::random_device rd;
     static std::mt19937 generator(rd());
