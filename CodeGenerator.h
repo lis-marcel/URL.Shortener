@@ -1,4 +1,3 @@
-// CodeGenerator.h
 #ifndef CODEGENERATOR_H
 #define CODEGENERATOR_H
 

@@ -1,6 +1,6 @@
-// main.cpp
 #include "crow.h"
 #include "SQLiteURLShortener.h"
+#include "SQLiteException.h"
 #include <string>
 
 struct CORSMiddleware {
@@ -37,34 +37,43 @@ int main()
     // Endpoint to shorten a given URL
     CROW_ROUTE(app, "/shorten")
         .methods(crow::HTTPMethod::POST)([&urlShortener](const crow::request& req) {
-        auto body = crow::json::load(req.body);
-        if (!body || !body.has("url")) {
-            return crow::response(400, "Invalid or missing 'url' field");
+        try {
+            auto body = crow::json::load(req.body);
+            if (!body || !body.has("url")) {
+                return crow::response(400, "Invalid or missing 'url' field");
+            }
+
+            std::string longURL = body["url"].s();
+            std::string shortURL = urlShortener.shortenURL(longURL);
+
+            if (shortURL.empty()) {
+                return crow::response(500, "Internal Server Error");
+            }
+
+            crow::json::wvalue res;
+            res["shortUrl"] = shortURL;
+            return crow::response(res);
         }
-
-        std::string longURL = body["url"].s();
-        std::string shortURL = urlShortener.shortenURL(longURL);
-
-        if (shortURL.empty()) {
+        catch (const SQLiteException& ex) {
+            // Log the error message and return a 500 response
+            std::cerr << "Error: " << ex.what() << std::endl;
             return crow::response(500, "Internal Server Error");
         }
-
-        crow::json::wvalue res;
-        res["shortUrl"] = shortURL;
-        return crow::response(res);
     });
 
     // Endpoint to redirect to the original URL
     CROW_ROUTE(app, "/<string>")
         .methods(crow::HTTPMethod::GET)([&urlShortener](const crow::request& req, crow::response& res, std::string shortCode) {
-        std::string originalURL = urlShortener.getOriginalURL(shortCode);
-        if (originalURL.empty()) {
-            res.code = 404;
-            res.end("URL not found");
-        }
-        else {
+        try {
+            std::string originalURL = urlShortener.getOriginalURL(shortCode);
             res.redirect(originalURL);
             res.end();
+        }
+        catch (const SQLiteException& ex) {
+            // Log the error message and return a 404 response
+            std::cerr << "Error: " << ex.what() << std::endl;
+            res.code = 404;
+            res.end("URL not found");
         }
     });
 

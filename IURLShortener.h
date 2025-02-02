@@ -1,4 +1,3 @@
-// IURLShortener.h
 #ifndef IURLSHORTENER_H
 #define IURLSHORTENER_H
 

@@ -1,5 +1,5 @@
-// SQLiteURLShortener.cpp
 #include "SQLiteURLShortener.h"
+#include "SQLiteException.h"
 #include <iostream>
 
 SQLiteURLShortener::SQLiteURLShortener(const std::string& baseURL)
@@ -37,8 +37,10 @@ void SQLiteURLShortener::initializeDatabase()
     char* errMsg = nullptr;
     rc = sqlite3_exec(db, createTableSQL, nullptr, nullptr, &errMsg);
     if (rc != SQLITE_OK) {
-        std::cerr << "SQL error in creating table: " << errMsg << std::endl;
+        std::string errorMsg = "SQL error in creating table: ";
+        errorMsg += errMsg;
         sqlite3_free(errMsg);
+        throw SQLiteException(errorMsg);
     }
 }
 
@@ -48,12 +50,21 @@ bool SQLiteURLShortener::shortCodeExists(const std::string& shortCode)
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db, checkSQL, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
-        std::cerr << "SQL prepare error: " << sqlite3_errmsg(db) << std::endl;
-        return false;
+        std::string errorMsg = "SQL prepare error: ";
+        errorMsg += sqlite3_errmsg(db);
+        throw SQLiteException(errorMsg);
     }
 
     sqlite3_bind_text(stmt, 1, shortCode.c_str(), -1, SQLITE_STATIC);
     rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_ROW && rc != SQLITE_DONE) {
+        std::string errorMsg = "SQL step error: ";
+        errorMsg += sqlite3_errmsg(db);
+        sqlite3_finalize(stmt);
+        throw SQLiteException(errorMsg);
+    }
+
     int count = sqlite3_column_int(stmt, 0);
     sqlite3_finalize(stmt);
 
@@ -75,8 +86,9 @@ std::string SQLiteURLShortener::shortenURL(const std::string& longURL)
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db, selectSQL, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
-        std::cerr << "SQL prepare error: " << sqlite3_errmsg(db) << std::endl;
-        return "";
+        std::string errorMsg = "SQL prepare error: ";
+        errorMsg += sqlite3_errmsg(db);
+        throw SQLiteException(errorMsg);
     }
 
     sqlite3_bind_text(stmt, 1, longURL.c_str(), -1, SQLITE_STATIC);
@@ -98,6 +110,11 @@ std::string SQLiteURLShortener::shortenURL(const std::string& longURL)
         shortToLongCache[shortCode] = longURL;
 
         return baseURL + shortCode;
+    } else if (rc != SQLITE_DONE) {
+        std::string errorMsg = "SQL step error: ";
+        errorMsg += sqlite3_errmsg(db);
+        sqlite3_finalize(stmt);
+        throw SQLiteException(errorMsg);
     }
     sqlite3_finalize(stmt);
 
@@ -110,8 +127,9 @@ std::string SQLiteURLShortener::shortenURL(const std::string& longURL)
     const char* insertSQL = "INSERT INTO url_mappings (short_code, long_url) VALUES (?, ?);";
     rc = sqlite3_prepare_v2(db, insertSQL, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
-        std::cerr << "SQL prepare error: " << sqlite3_errmsg(db) << std::endl;
-        return "";
+        std::string errorMsg = "SQL prepare error: ";
+        errorMsg += sqlite3_errmsg(db);
+        throw SQLiteException(errorMsg);
     }
 
     sqlite3_bind_text(stmt, 1, shortCode.c_str(), -1, SQLITE_STATIC);
@@ -119,9 +137,10 @@ std::string SQLiteURLShortener::shortenURL(const std::string& longURL)
 
     rc = sqlite3_step(stmt);
     if (rc != SQLITE_DONE) {
-        std::cerr << "SQL insert error: " << sqlite3_errmsg(db) << std::endl;
+        std::string errorMsg = "SQL insert error: ";
+        errorMsg += sqlite3_errmsg(db);
         sqlite3_finalize(stmt);
-        return "";
+        throw SQLiteException(errorMsg);
     }
 
     sqlite3_finalize(stmt);
@@ -143,12 +162,19 @@ std::string SQLiteURLShortener::getOriginalURL(const std::string& shortCode)
 {
     std::lock_guard<std::mutex> lock(dbMutex);
 
+    // Check cache first
+    auto cacheIt = shortToLongCache.find(shortCode);
+    if (cacheIt != shortToLongCache.end()) {
+        return cacheIt->second;
+    }
+
     const char* selectSQL = "SELECT long_url FROM url_mappings WHERE short_code = ?;";
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db, selectSQL, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
-        std::cerr << "SQL prepare error: " << sqlite3_errmsg(db) << std::endl;
-        return "";
+        std::string errorMsg = "SQL prepare error: ";
+        errorMsg += sqlite3_errmsg(db);
+        throw SQLiteException(errorMsg);
     }
 
     sqlite3_bind_text(stmt, 1, shortCode.c_str(), -1, SQLITE_STATIC);
@@ -167,8 +193,15 @@ std::string SQLiteURLShortener::getOriginalURL(const std::string& shortCode)
         }
         shortToLongCache[shortCode] = longURL;
         longToShortCache[longURL] = shortCode;
+    } else if (rc == SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        // If no rows are returned, the short code does not exist
+        throw SQLiteException("Short code not found: " + shortCode);
     } else {
-        std::cerr << "Short code not found: " << shortCode << std::endl;
+        std::string errorMsg = "SQL step error: ";
+        errorMsg += sqlite3_errmsg(db);
+        sqlite3_finalize(stmt);
+        throw SQLiteException(errorMsg);
     }
 
     sqlite3_finalize(stmt);

@@ -1,4 +1,3 @@
-// SQLiteURLShortener.h
 #ifndef SQLITEURLSHORTENER_H
 #define SQLITEURLSHORTENER_H
 

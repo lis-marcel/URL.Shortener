@@ -144,6 +144,7 @@
   <ItemGroup>
     <ClInclude Include="CodeGenerator.h" />
     <ClInclude Include="IURLShortener.h" />
+    <ClInclude Include="SQLiteException.h" />
     <ClInclude Include="SQLiteURLShortener.h" />
     <ClInclude Include="URLShortener.h" />
   </ItemGroup>
