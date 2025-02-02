@@ -1,6 +1,5 @@
 // main.cpp
 #include "crow.h"
-#include "URLShortener.h"
 #include "SQLiteURLShortener.h"
 #include <string>
 
@@ -32,7 +31,6 @@ struct CORSMiddleware {
 int main()
 {
     crow::App<CORSMiddleware> app;
-    //crow::SimpleApp app;
     const std::string baseURL = "http://127.0.0.1:18080/";
     SQLiteURLShortener urlShortener(baseURL);
 

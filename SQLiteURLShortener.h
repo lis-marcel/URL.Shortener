@@ -5,11 +5,12 @@
 #include "IURLShortener.h"
 #include <sqlite3.h>
 #include <mutex>
+#include <unordered_map>
 
 class SQLiteURLShortener : public IURLShortener {
 public:
     SQLiteURLShortener(const std::string& baseURL);
-    virtual ~SQLiteURLShortener();
+    ~SQLiteURLShortener();
 
     std::string shortenURL(const std::string& longURL) override;
     std::string getOriginalURL(const std::string& shortCode) override;
@@ -17,6 +18,11 @@ public:
 private:
     sqlite3* db;
     std::mutex dbMutex;
+
+    // Caches
+    std::unordered_map<std::string, std::string> longToShortCache;
+    std::unordered_map<std::string, std::string> shortToLongCache;
+    size_t cacheCapacity = 100; // Adjust the cache size as needed
 
     void initializeDatabase();
     bool shortCodeExists(const std::string& shortCode);

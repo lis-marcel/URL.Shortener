@@ -64,6 +64,12 @@ std::string SQLiteURLShortener::shortenURL(const std::string& longURL)
 {
     std::lock_guard<std::mutex> lock(dbMutex);
 
+    // Check cache first
+    auto cacheIt = longToShortCache.find(longURL);
+    if (cacheIt != longToShortCache.end()) {
+        return baseURL + cacheIt->second;
+    }
+
     // Check if the long URL already has a short code
     const char* selectSQL = "SELECT short_code FROM url_mappings WHERE long_url = ?;";
     sqlite3_stmt* stmt = nullptr;
@@ -80,6 +86,17 @@ std::string SQLiteURLShortener::shortenURL(const std::string& longURL)
     if (rc == SQLITE_ROW) {
         shortCode = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
         sqlite3_finalize(stmt);
+
+        // Update caches
+        if (longToShortCache.size() >= cacheCapacity) {
+            longToShortCache.clear();
+        }
+        if (shortToLongCache.size() >= cacheCapacity) {
+            shortToLongCache.clear();
+        }
+        longToShortCache[longURL] = shortCode;
+        shortToLongCache[shortCode] = longURL;
+
         return baseURL + shortCode;
     }
     sqlite3_finalize(stmt);
@@ -108,6 +125,17 @@ std::string SQLiteURLShortener::shortenURL(const std::string& longURL)
     }
 
     sqlite3_finalize(stmt);
+
+    // Update caches
+    if (longToShortCache.size() >= cacheCapacity) {
+        longToShortCache.clear();
+    }
+    if (shortToLongCache.size() >= cacheCapacity) {
+        shortToLongCache.clear();
+    }
+    longToShortCache[longURL] = shortCode;
+    shortToLongCache[shortCode] = longURL;
+
     return baseURL + shortCode;
 }
 
@@ -129,6 +157,16 @@ std::string SQLiteURLShortener::getOriginalURL(const std::string& shortCode)
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW) {
         longURL = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+
+        // Update caches
+        if (shortToLongCache.size() >= cacheCapacity) {
+            shortToLongCache.clear();
+        }
+        if (longToShortCache.size() >= cacheCapacity) {
+            longToShortCache.clear();
+        }
+        shortToLongCache[shortCode] = longURL;
+        longToShortCache[longURL] = shortCode;
     } else {
         std::cerr << "Short code not found: " << shortCode << std::endl;
     }
